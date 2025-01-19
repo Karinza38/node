@@ -174,25 +174,26 @@ node:internal/child_process:388
                            ^
 Error: Access to this API has been restricted
     at ChildProcess.spawn (node:internal/child_process:388:28)
-    at Object.spawn (node:child_process:723:9)
-    at Object.<anonymous> (/home/index.js:3:14)
-    at Module._compile (node:internal/modules/cjs/loader:1120:14)
-    at Module._extensions..js (node:internal/modules/cjs/loader:1174:10)
-    at Module.load (node:internal/modules/cjs/loader:998:32)
-    at Module._load (node:internal/modules/cjs/loader:839:12)
-    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:81:12)
     at node:internal/main/run_main_module:17:47 {
   code: 'ERR_ACCESS_DENIED',
   permission: 'ChildProcess'
 }
 ```
 
+Unlike `child_process.spawn`, the `child_process.fork` API copies the execution
+arguments from the parent process. This means that if you start Node.js with the
+Permission Model enabled and include the `--allow-child-process` flag, calling
+`child_process.fork()` will propagate all Permission Model flags to the child
+process.
+
 ### `--allow-fs-read`
 
 <!-- YAML
 added: v20.0.0
 changes:
-  - version: v23.5.0
+  - version:
+    - v23.5.0
+    - v22.13.0
     pr-url: https://github.com/nodejs/node/pull/56201
     description: Permission Model and --allow-fs flags are stable.
   - version: v20.7.0
@@ -237,7 +238,9 @@ node --permission --allow-fs-read=/path/to/index.js index.js
 <!-- YAML
 added: v20.0.0
 changes:
-  - version: v23.5.0
+  - version:
+    - v23.5.0
+    - v22.13.0
     pr-url: https://github.com/nodejs/node/pull/56201
     description: Permission Model and --allow-fs flags are stable.
   - version: v20.7.0
@@ -574,6 +577,17 @@ Disable the `Object.prototype.__proto__` property. If `mode` is `delete`, the
 property is removed entirely. If `mode` is `throw`, accesses to the
 property throw an exception with the code `ERR_PROTO_ACCESS`.
 
+### `--disable-sigusr1`
+
+<!-- YAML
+added: REPLACEME
+-->
+
+> Stability: 1.2 - Release candidate
+
+Disable the ability of starting a debugging session by sending a
+`SIGUSR1` signal to the process.
+
 ### `--disable-warning=code-or-type`
 
 > Stability: 1.1 - Active development
@@ -886,7 +900,7 @@ It is possible to run code containing inline types unless the
 ### `--experimental-addon-modules`
 
 <!-- YAML
-added: REPLACEME
+added: v23.6.0
 -->
 
 > Stability: 1.0 - Early development
@@ -965,6 +979,14 @@ added:
 If the ES module being `require()`'d contains top-level `await`, this flag
 allows Node.js to evaluate the module, try to locate the
 top-level awaits, and print their location to help users find them.
+
+### `--experimental-quic`
+
+<!--
+added: REPLACEME
+-->
+
+Enables the experimental `node:quic` built-in module.
 
 ### `--experimental-require-module`
 
@@ -1368,7 +1390,8 @@ Node.js will try to detect the syntax with the following steps:
 1. Run the input as CommonJS.
 2. If step 1 fails, run the input as an ES module.
 3. If step 2 fails with a SyntaxError, strip the types.
-4. If step 3 fails with an error code [`ERR_INVALID_TYPESCRIPT_SYNTAX`][],
+4. If step 3 fails with an error code [`ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`][]
+   or [`ERR_INVALID_TYPESCRIPT_SYNTAX`][],
    throw the error from step 2, including the TypeScript error in the message,
    else run as CommonJS.
 5. If step 4 fails, run the input as an ES module.
@@ -1447,6 +1470,7 @@ added: v7.6.0
 
 Set the `host:port` to be used when the inspector is activated.
 Useful when activating the inspector by sending the `SIGUSR1` signal.
+Except when [`--disable-sigusr1`][] is passed.
 
 Default host is `127.0.0.1`. If port `0` is specified,
 a random available port will be used.
@@ -1645,7 +1669,9 @@ See [Loading ECMAScript modules using `require()`][].
 <!-- YAML
 added: v22.5.0
 changes:
-  - version: v23.4.0
+  - version:
+    - v23.4.0
+    - v22.13.0
     pr-url: https://github.com/nodejs/node/pull/55890
     description: SQLite is unflagged but still experimental.
 -->
@@ -1657,7 +1683,7 @@ Disable the experimental [`node:sqlite`][] module.
 <!-- YAML
 added: v22.6.0
 changes:
-  - version: REPLACEME
+  - version: v23.6.0
     pr-url: https://github.com/nodejs/node/pull/56350
     description: Type stripping is enabled by default.
 -->
@@ -1794,7 +1820,9 @@ developers may leverage to detect deprecated API usage.
 <!-- YAML
 added: v20.0.0
 changes:
-  - version: v23.5.0
+  - version:
+    - v23.5.0
+    - v22.13.0
     pr-url: https://github.com/nodejs/node/pull/56201
     description: Permission Model is now stable.
 -->
@@ -1952,7 +1980,9 @@ Location at which the report will be generated.
 ### `--report-exclude-env`
 
 <!-- YAML
-added: v23.3.0
+added:
+  - v23.3.0
+  - v22.13.0
 -->
 
 When `--report-exclude-env` is passed the diagnostic report generated will not
@@ -2346,7 +2376,7 @@ finished executing even if the event loop would otherwise remain active.
 <!-- YAML
 added: v22.8.0
 changes:
-  - version: REPLACEME
+  - version: v23.6.0
     pr-url: https://github.com/nodejs/node/pull/56298
     description: This flag was renamed from `--experimental-test-isolation` to
                  `--test-isolation`.
@@ -2473,7 +2503,9 @@ subtests inherit this value from their parent. The default value is `Infinity`.
 <!-- YAML
 added: v22.3.0
 changes:
-  - version: v23.4.0
+  - version:
+    - v23.4.0
+    - v22.13.0
     pr-url: https://github.com/nodejs/node/pull/55897
     description: Snapsnot testing is no longer experimental.
 -->
@@ -2591,7 +2623,9 @@ Print stack traces for deprecations.
 ### `--trace-env`
 
 <!-- YAML
-added: v23.4.0
+added:
+  - v23.4.0
+  - v22.13.0
 -->
 
 Print information about any access to environment variables done in the current Node.js
@@ -2614,7 +2648,9 @@ To print the stack trace of the access, use `--trace-env-js-stack` and/or
 ### `--trace-env-js-stack`
 
 <!-- YAML
-added: v23.4.0
+added:
+  - v23.4.0
+  - v22.13.0
 -->
 
 In addition to what `--trace-env` does, this prints the JavaScript stack trace of the access.
@@ -2622,7 +2658,9 @@ In addition to what `--trace-env` does, this prints the JavaScript stack trace o
 ### `--trace-env-native-stack`
 
 <!-- YAML
-added: v23.4.0
+added:
+  - v23.4.0
+  - v22.13.0
 -->
 
 In addition to what `--trace-env` does, this prints the native stack trace of the access.
@@ -2669,6 +2707,7 @@ i.e. invoking `process.exit()`.
 <!-- YAML
 added:
  - v23.5.0
+ - v22.13.0
 -->
 
 Prints information about usage of [Loading ECMAScript modules using `require()`][].
@@ -3073,6 +3112,7 @@ one is included in the list below.
 * `--conditions`, `-C`
 * `--diagnostic-dir`
 * `--disable-proto`
+* `--disable-sigusr1`
 * `--disable-warning`
 * `--disable-wasm-trap-handler`
 * `--dns-result-order`
@@ -3088,8 +3128,8 @@ one is included in the list below.
 * `--experimental-json-modules`
 * `--experimental-loader`
 * `--experimental-modules`
-* `--experimental-permission`
 * `--experimental-print-required-tla`
+* `--experimental-quic`
 * `--experimental-require-module`
 * `--experimental-shadow-realm`
 * `--experimental-specifier-resolution`
@@ -3351,11 +3391,6 @@ easier to instrument applications that call the `child_process.spawn()` family
 of functions. `NODE_V8_COVERAGE` can be set to an empty string, to prevent
 propagation.
 
-### `NO_COLOR=<any>`
-
-[`NO_COLOR`][]  is an alias for `NODE_DISABLE_COLORS`. The value of the
-environment variable is arbitrary.
-
 #### Coverage output
 
 Coverage is output as an array of [ScriptCoverage][] objects on the top-level
@@ -3420,6 +3455,11 @@ and the line lengths of the source file (in the key `lineLengths`).
   }
 }
 ```
+
+### `NO_COLOR=<any>`
+
+[`NO_COLOR`][]  is an alias for `NODE_DISABLE_COLORS`. The value of the
+environment variable is arbitrary.
 
 ### `OPENSSL_CONF=file`
 
@@ -3651,6 +3691,7 @@ node --stack-trace-limit=12 -p -e "Error.stackTraceLimit" # prints 12
 [`--build-snapshot`]: #--build-snapshot
 [`--cpu-prof-dir`]: #--cpu-prof-dir
 [`--diagnostic-dir`]: #--diagnostic-dirdirectory
+[`--disable-sigusr1`]: #--disable-sigusr1
 [`--env-file-if-exists`]: #--env-file-if-existsconfig
 [`--env-file`]: #--env-fileconfig
 [`--experimental-addon-modules`]: #--experimental-addon-modules
@@ -3668,6 +3709,7 @@ node --stack-trace-limit=12 -p -e "Error.stackTraceLimit" # prints 12
 [`Buffer`]: buffer.md#class-buffer
 [`CRYPTO_secure_malloc_init`]: https://www.openssl.org/docs/man3.0/man3/CRYPTO_secure_malloc_init.html
 [`ERR_INVALID_TYPESCRIPT_SYNTAX`]: errors.md#err_invalid_typescript_syntax
+[`ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`]: errors.md#err_unsupported_typescript_syntax
 [`NODE_OPTIONS`]: #node_optionsoptions
 [`NO_COLOR`]: https://no-color.org
 [`SlowBuffer`]: buffer.md#class-slowbuffer

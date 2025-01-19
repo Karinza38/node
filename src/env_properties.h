@@ -99,6 +99,7 @@
     "transferList")                                                            \
   V(clone_untransferable_str, "Found invalid value in transferList.")          \
   V(code_string, "code")                                                       \
+  V(column_number_string, "columnNumber")                                      \
   V(column_string, "column")                                                   \
   V(commonjs_string, "commonjs")                                               \
   V(config_string, "config")                                                   \
@@ -320,6 +321,7 @@
   V(salt_length_string, "saltLength")                                          \
   V(scheme_string, "scheme")                                                   \
   V(scopeid_string, "scopeid")                                                 \
+  V(script_id_string, "scriptId")                                              \
   V(script_name_string, "scriptName")                                          \
   V(serial_number_string, "serialNumber")                                      \
   V(serial_string, "serial")                                                   \

@@ -127,7 +127,9 @@ open. This method is a wrapper around [`sqlite3_close_v2()`][].
 ### `database.loadExtension(path)`
 
 <!-- YAML
-added: v23.5.0
+added:
+  - v23.5.0
+  - v22.13.0
 -->
 
 * `path` {string} The path to the shared library to load.
@@ -139,7 +141,9 @@ around [`sqlite3_load_extension()`][]. It is required to enable the
 ### `database.enableLoadExtension(allow)`
 
 <!-- YAML
-added: v23.5.0
+added:
+  - v23.5.0
+  - v22.13.0
 -->
 
 * `allow` {boolean} Whether to allow loading extensions.
@@ -163,7 +167,9 @@ file. This method is a wrapper around [`sqlite3_exec()`][].
 ### `database.function(name[, options], function)`
 
 <!-- YAML
-added: v23.5.0
+added:
+  - v23.5.0
+  - v22.13.0
 -->
 
 * `name` {string} The name of the SQLite function to create.
@@ -339,11 +345,15 @@ over hand-crafted SQL strings when handling user input.
 
 <!-- YAML
 added: v22.5.0
+changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/56385
+    description: Add support for `DataView` and typed array objects for `anonymousParameters`.
 -->
 
 * `namedParameters` {Object} An optional object used to bind named parameters.
   The keys of this object are used to configure the mapping.
-* `...anonymousParameters` {null|number|bigint|string|Buffer|Uint8Array} Zero or
+* `...anonymousParameters` {null|number|bigint|string|Buffer|TypedArray|DataView} Zero or
   more values to bind to anonymous parameters.
 * Returns: {Array} An array of objects. Each object corresponds to a row
   returned by executing the prepared statement. The keys and values of each
@@ -371,11 +381,15 @@ execution of this prepared statement. This property is a wrapper around
 
 <!-- YAML
 added: v22.5.0
+changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/56385
+    description: Add support for `DataView` and typed array objects for `anonymousParameters`.
 -->
 
 * `namedParameters` {Object} An optional object used to bind named parameters.
   The keys of this object are used to configure the mapping.
-* `...anonymousParameters` {null|number|bigint|string|Buffer|Uint8Array} Zero or
+* `...anonymousParameters` {null|number|bigint|string|Buffer|TypedArray|DataView} Zero or
   more values to bind to anonymous parameters.
 * Returns: {Object|undefined} An object corresponding to the first row returned
   by executing the prepared statement. The keys and values of the object
@@ -390,12 +404,18 @@ values in `namedParameters` and `anonymousParameters`.
 ### `statement.iterate([namedParameters][, ...anonymousParameters])`
 
 <!-- YAML
-added: v23.4.0
+added:
+  - v23.4.0
+  - v22.13.0
+changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/56385
+    description: Add support for `DataView` and typed array objects for `anonymousParameters`.
 -->
 
 * `namedParameters` {Object} An optional object used to bind named parameters.
   The keys of this object are used to configure the mapping.
-* `...anonymousParameters` {null|number|bigint|string|Buffer|Uint8Array} Zero or
+* `...anonymousParameters` {null|number|bigint|string|Buffer|TypedArray|DataView} Zero or
   more values to bind to anonymous parameters.
 * Returns: {Iterator} An iterable iterator of objects. Each object corresponds to a row
   returned by executing the prepared statement. The keys and values of each
@@ -410,11 +430,15 @@ the values in `namedParameters` and `anonymousParameters`.
 
 <!-- YAML
 added: v22.5.0
+changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/56385
+    description: Add support for `DataView` and typed array objects for `anonymousParameters`.
 -->
 
 * `namedParameters` {Object} An optional object used to bind named parameters.
   The keys of this object are used to configure the mapping.
-* `...anonymousParameters` {null|number|bigint|string|Buffer|Uint8Array} Zero or
+* `...anonymousParameters` {null|number|bigint|string|Buffer|TypedArray|DataView} Zero or
   more values to bind to anonymous parameters.
 * Returns: {Object}
   * `changes`: {number|bigint} The number of rows modified, inserted, or deleted
@@ -502,7 +526,9 @@ exception.
 ## `sqlite.constants`
 
 <!-- YAML
-added: v23.5.0
+added:
+  - v23.5.0
+  - v22.13.0
 -->
 
 * {Object}

@@ -176,11 +176,7 @@ bool AsyncHooks::pop_async_context(double async_id) {
     }
 #endif
     native_execution_async_resources_.resize(offset);
-    if (native_execution_async_resources_.size() <
-            native_execution_async_resources_.capacity() / 2 &&
-        native_execution_async_resources_.size() > 16) {
-      native_execution_async_resources_.shrink_to_fit();
-    }
+    native_execution_async_resources_.shrink_to_fit();
   }
 
   if (js_execution_async_resources()->Length() > offset) [[unlikely]] {
@@ -227,7 +223,12 @@ void AsyncHooks::InstallPromiseHooks(Local<Context> ctx) {
                            : PersistentToLocal::Strong(js_promise_hooks_[3]));
 }
 
+void Environment::PurgeTrackedEmptyContexts() {
+  std::erase_if(contexts_, [&](auto&& el) { return el.IsEmpty(); });
+}
+
 void Environment::TrackContext(Local<Context> context) {
+  PurgeTrackedEmptyContexts();
   size_t id = contexts_.size();
   contexts_.resize(id + 1);
   contexts_[id].Reset(isolate_, context);
@@ -236,7 +237,7 @@ void Environment::TrackContext(Local<Context> context) {
 
 void Environment::UntrackContext(Local<Context> context) {
   HandleScope handle_scope(isolate_);
-  std::erase_if(contexts_, [&](auto&& el) { return el.IsEmpty(); });
+  PurgeTrackedEmptyContexts();
   for (auto it = contexts_.begin(); it != contexts_.end(); it++) {
     if (Local<Context> saved_context = PersistentToLocal::Weak(isolate_, *it);
         saved_context == context) {
@@ -1694,6 +1695,7 @@ AsyncHooks::AsyncHooks(Isolate* isolate, const SerializeInfo* info)
       fields_(isolate, kFieldsCount, MAYBE_FIELD_PTR(info, fields)),
       async_id_fields_(
           isolate, kUidFieldsCount, MAYBE_FIELD_PTR(info, async_id_fields)),
+      native_execution_async_resources_(isolate),
       info_(info) {
   HandleScope handle_scope(isolate);
   if (info == nullptr) {
