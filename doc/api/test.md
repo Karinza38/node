@@ -105,11 +105,11 @@ top level test with two subtests.
 
 ```js
 test('top level test', async (t) => {
-  await t.test('subtest 1', (t) => {
+  t.test('subtest 1', (t) => {
     assert.strictEqual(1, 1);
   });
 
-  await t.test('subtest 2', (t) => {
+  t.test('subtest 2', (t) => {
     assert.strictEqual(2, 2);
   });
 });
@@ -118,12 +118,7 @@ test('top level test', async (t) => {
 > **Note:** `beforeEach` and `afterEach` hooks are triggered
 > between each subtest execution.
 
-In this example, `await` is used to ensure that both subtests have completed.
-This is necessary because tests do not wait for their subtests to
-complete, unlike tests created within suites.
-Any subtests that are still outstanding when their parent finishes
-are cancelled and treated as failures. Any subtest failures cause the parent
-test to fail.
+Any subtest failures cause the parent test to fail.
 
 ## Skipping tests
 
@@ -241,20 +236,20 @@ that are not executed are omitted from the test runner output.
 // The suite's 'only' option is set, so these tests are run.
 test('this test is run', { only: true }, async (t) => {
   // Within this test, all subtests are run by default.
-  await t.test('running subtest');
+  t.test('running subtest');
 
   // The test context can be updated to run subtests with the 'only' option.
   t.runOnly(true);
-  await t.test('this subtest is now skipped');
-  await t.test('this subtest is run', { only: true });
+  t.test('this subtest is now skipped');
+  t.test('this subtest is run', { only: true });
 
   // Switch the context back to execute all tests.
   t.runOnly(false);
-  await t.test('this subtest is now run');
+  t.test('this subtest is now run');
 
   // Explicitly do not run these tests.
-  await t.test('skipped subtest 3', { only: false });
-  await t.test('skipped subtest 4', { skip: true });
+  t.test('skipped subtest 3', { only: false });
+  t.test('skipped subtest 4', { skip: true });
 });
 
 // The 'only' option is not set, so this test is skipped.
@@ -309,13 +304,13 @@ multiple times (e.g. `--test-name-pattern="test 1"`,
 
 ```js
 test('test 1', async (t) => {
-  await t.test('test 2');
-  await t.test('test 3');
+  t.test('test 2');
+  t.test('test 3');
 });
 
 test('Test 4', async (t) => {
-  await t.test('Test 5');
-  await t.test('test 6');
+  t.test('Test 5');
+  t.test('test 6');
 });
 ```
 
@@ -402,6 +397,60 @@ their dependencies. When a change is detected, the test runner will
 rerun the tests affected by the change.
 The test runner will continue to run until the process is terminated.
 
+## Global setup and teardown
+
+<!-- YAML
+added: REPLACEME
+-->
+
+> Stability: 1.0 - Early development
+
+The test runner supports specifying a module that will be evaluated before all tests are executed and
+can be used to setup global state or fixtures for tests. This is useful for preparing resources or setting up
+shared state that is required by multiple tests.
+
+This module can export any of the following:
+
+* A `globalSetup` function which runs once before all tests start
+* A `globalTeardown` function which runs once after all tests complete
+
+The module is specified using the `--test-global-setup` flag when running tests from the command line.
+
+```cjs
+// setup-module.js
+async function globalSetup() {
+  // Setup shared resources, state, or environment
+  console.log('Global setup executed');
+  // Run servers, create files, prepare databases, etc.
+}
+
+async function globalTeardown() {
+  // Clean up resources, state, or environment
+  console.log('Global teardown executed');
+  // Close servers, remove files, disconnect from databases, etc.
+}
+
+module.exports = { globalSetup, globalTeardown };
+```
+
+```mjs
+// setup-module.mjs
+export async function globalSetup() {
+  // Setup shared resources, state, or environment
+  console.log('Global setup executed');
+  // Run servers, create files, prepare databases, etc.
+}
+
+export async function globalTeardown() {
+  // Clean up resources, state, or environment
+  console.log('Global teardown executed');
+  // Close servers, remove files, disconnect from databases, etc.
+}
+```
+
+If the global setup function throws an error, no tests will be run and the process will exit with a non-zero exit code.
+The global teardown function will not be called in this case.
+
 ## Running tests from the command line
 
 The Node.js test runner can be invoked from the command line by passing the
@@ -423,12 +472,9 @@ By default, Node.js will run all files matching these patterns:
 Unless [`--no-experimental-strip-types`][] is supplied, the following
 additional patterns are also matched:
 
-* `**/*.test.{cts,mts,ts}`
-* `**/*-test.{cts,mts,ts}`
-* `**/*_test.{cts,mts,ts}`
-* `**/test-*.{cts,mts,ts}`
-* `**/test.{cts,mts,ts}`
-* `**/test/**/*.{cts,mts,ts}`
+* `**/test/**/*-test.{cts,mts,ts}`
+* `**/test/**/*.test.{cts,mts,ts}`
+* `**/test/**/*_test.{cts,mts,ts}`
 
 Alternatively, one or more glob patterns can be provided as the
 final argument(s) to the Node.js command, as shown below.
@@ -932,7 +978,13 @@ test('runs timers as setTime passes ticks', (context) => {
 
 ## Snapshot testing
 
-> Stability: 1.0 - Early development
+<!-- YAML
+added: v22.3.0
+changes:
+  - version: v23.4.0
+    pr-url: https://github.com/nodejs/node/pull/55897
+    description: Snapsnot testing is no longer experimental.
+-->
 
 Snapshot tests allow arbitrary values to be serialized into string values and
 compared against a set of known good values. The known good values are known as
@@ -1401,6 +1453,11 @@ run({ files: [path.resolve('./tests/test.js')] })
 added:
   - v22.0.0
   - v20.13.0
+changes:
+  - version:
+    - REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/56664
+    description: This function no longer returns a `Promise`.
 -->
 
 * `name` {string} The name of the suite, which is displayed when reporting test
@@ -1411,7 +1468,6 @@ added:
 * `fn` {Function|AsyncFunction} The suite function declaring nested tests and
   suites. The first argument to this function is a [`SuiteContext`][] object.
   **Default:** A no-op function.
-* Returns: {Promise} Immediately fulfilled with `undefined`.
 
 The `suite()` function is imported from the `node:test` module.
 
@@ -1455,6 +1511,10 @@ added:
   - v18.0.0
   - v16.17.0
 changes:
+  - version:
+    - REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/56664
+    description: This function no longer returns a `Promise`.
   - version:
     - v20.2.0
     - v18.17.0
@@ -1504,8 +1564,6 @@ changes:
   to this function is a [`TestContext`][] object. If the test uses callbacks,
   the callback function is passed as the second argument. **Default:** A no-op
   function.
-* Returns: {Promise} Fulfilled with `undefined` once
-  the test completes, or immediately if the test runs within a suite.
 
 The `test()` function is the value imported from the `test` module. Each
 invocation of this function results in reporting the test to the {TestsStream}.
@@ -1513,26 +1571,6 @@ invocation of this function results in reporting the test to the {TestsStream}.
 The `TestContext` object passed to the `fn` argument can be used to perform
 actions related to the current test. Examples include skipping the test, adding
 additional diagnostic information, or creating subtests.
-
-`test()` returns a `Promise` that fulfills once the test completes.
-if `test()` is called within a suite, it fulfills immediately.
-The return value can usually be discarded for top level tests.
-However, the return value from subtests should be used to prevent the parent
-test from finishing first and cancelling the subtest
-as shown in the following example.
-
-```js
-test('top level test', async (t) => {
-  // The setTimeout() in the following subtest would cause it to outlive its
-  // parent test if 'await' is removed on the next line. Once the parent test
-  // completes, it will cancel any outstanding subtests.
-  await t.test('longer running subtest', async (t) => {
-    return new Promise((resolve, reject) => {
-      setTimeout(resolve, 1000);
-    });
-  });
-});
-```
 
 The `timeout` option can be used to fail the test if it takes longer than
 `timeout` milliseconds to complete. However, it is not a reliable mechanism for
@@ -1744,13 +1782,38 @@ describe('tests', async () => {
 });
 ```
 
+## `assert`
+
+<!-- YAML
+added:
+  - v23.7.0
+  - v22.14.0
+-->
+
+An object whose methods are used to configure available assertions on the
+`TestContext` objects in the current process. The methods from `node:assert`
+and snapshot testing functions are available by default.
+
+It is possible to apply the same configuration to all files by placing common
+configuration code in a module
+preloaded with `--require` or `--import`.
+
+### `assert.register(name, fn)`
+
+<!-- YAML
+added:
+  - v23.7.0
+  - v22.14.0
+-->
+
+Defines a new assertion function with the provided name and function. If an
+assertion already exists with the same name, it is overwritten.
+
 ## `snapshot`
 
 <!-- YAML
 added: v22.3.0
 -->
-
-> Stability: 1.0 - Early development
 
 An object whose methods are used to configure default snapshot settings in the
 current process. It is possible to apply the same configuration to all files by
@@ -1762,8 +1825,6 @@ placing common configuration code in a module preloaded with `--require` or
 <!-- YAML
 added: v22.3.0
 -->
-
-> Stability: 1.0 - Early development
 
 * `serializers` {Array} An array of synchronous functions used as the default
   serializers for snapshot tests.
@@ -1779,8 +1840,6 @@ more robust serialization mechanism is required, this function should be used.
 <!-- YAML
 added: v22.3.0
 -->
-
-> Stability: 1.0 - Early development
 
 * `fn` {Function} A function used to compute the location of the snapshot file.
   The function receives the path of the test file as its only argument. If the
@@ -2221,8 +2280,6 @@ changes:
     pr-url: https://github.com/nodejs/node/pull/55398
     description: The Mock Timers is now stable.
 -->
-
-> Stability: 2 - Stable
 
 Mocking timers is a technique commonly used in software testing to simulate and
 control the behavior of timers, such as `setInterval` and `setTimeout`,
@@ -2930,6 +2987,7 @@ The corresponding declaration ordered events are `'test:pass'` and `'test:fail'`
     `undefined` if the test was run through the REPL.
   * `name` {string} The test name.
   * `nesting` {number} The nesting level of the test.
+  * `type` {string} The test type. Either `'suite'` or `'test'`.
 
 Emitted when a test is dequeued, right before it is executed.
 This event is not guaranteed to be emitted in the same order as the tests are
@@ -2962,6 +3020,7 @@ defined.
     `undefined` if the test was run through the REPL.
   * `name` {string} The test name.
   * `nesting` {number} The nesting level of the test.
+  * `type` {string} The test type. Either `'suite'` or `'test'`.
 
 Emitted when a test is enqueued for execution.
 
@@ -3164,12 +3223,9 @@ before each subtest of the current test.
 ```js
 test('top level test', async (t) => {
   t.beforeEach((t) => t.diagnostic(`about to run ${t.name}`));
-  await t.test(
-    'This is a subtest',
-    (t) => {
-      assert.ok('some relevant assertion here');
-    },
-  );
+  t.test('This is a subtest', (t) => {
+    assert.ok('some relevant assertion here');
+  });
 });
 ```
 
@@ -3227,12 +3283,9 @@ after each subtest of the current test.
 ```js
 test('top level test', async (t) => {
   t.afterEach((t) => t.diagnostic(`finished running ${t.name}`));
-  await t.test(
-    'This is a subtest',
-    (t) => {
-      assert.ok('some relevant assertion here');
-    },
-  );
+  t.test('This is a subtest', (t) => {
+    assert.ok('some relevant assertion here');
+  });
 });
 ```
 
@@ -3255,13 +3308,50 @@ test('test', (t) => {
 });
 ```
 
+#### `context.assert.fileSnapshot(value, path[, options])`
+
+<!-- YAML
+added:
+  - v23.7.0
+  - v22.14.0
+-->
+
+* `value` {any} A value to serialize to a string. If Node.js was started with
+  the [`--test-update-snapshots`][] flag, the serialized value is written to
+  `path`. Otherwise, the serialized value is compared to the contents of the
+  existing snapshot file.
+* `path` {string} The file where the serialized `value` is written.
+* `options` {Object} Optional configuration options. The following properties
+  are supported:
+  * `serializers` {Array} An array of synchronous functions used to serialize
+    `value` into a string. `value` is passed as the only argument to the first
+    serializer function. The return value of each serializer is passed as input
+    to the next serializer. Once all serializers have run, the resulting value
+    is coerced to a string. **Default:** If no serializers are provided, the
+    test runner's default serializers are used.
+
+This function serializes `value` and writes it to the file specified by `path`.
+
+```js
+test('snapshot test with default serialization', (t) => {
+  t.assert.fileSnapshot({ value1: 1, value2: 2 }, './snapshots/snapshot.json');
+});
+```
+
+This function differs from `context.assert.snapshot()` in the following ways:
+
+* The snapshot file path is explicitly provided by the user.
+* Each snapshot file is limited to a single snapshot value.
+* No additional escaping is performed by the test runner.
+
+These differences allow snapshot files to better support features such as syntax
+highlighting.
+
 #### `context.assert.snapshot(value[, options])`
 
 <!-- YAML
 added: v22.3.0
 -->
-
-> Stability: 1.0 - Early development
 
 * `value` {any} A value to serialize to a string. If Node.js was started with
   the [`--test-update-snapshots`][] flag, the serialized value is written to
@@ -3340,19 +3430,35 @@ added:
 
 The name of the test.
 
-### `context.plan(count)`
+### `context.plan(count[,options])`
 
 <!-- YAML
 added:
   - v22.2.0
   - v20.15.0
 changes:
-  - version: v23.4.0
+  - version:
+    - v23.9.0
+    pr-url: https://github.com/nodejs/node/pull/56765
+    description: Add the `options` parameter.
+  - version:
+    - v23.4.0
+    - v22.13.0
     pr-url: https://github.com/nodejs/node/pull/55895
     description: This function is no longer experimental.
 -->
 
 * `count` {number} The number of assertions and subtests that are expected to run.
+* `options` {Object} Additional options for the plan.
+  * `wait` {boolean|number} The wait time for the plan:
+    * If `true`, the plan waits indefinitely for all assertions and subtests to run.
+    * If `false`, the plan performs an immediate check after the test function completes,
+      without waiting for any pending assertions or subtests.
+      Any assertions or subtests that complete after this check will not be counted towards the plan.
+    * If a number, it specifies the maximum wait time in milliseconds
+      before timing out while waiting for expected assertions and subtests to be matched.
+      If the timeout is reached, the test will fail.
+      **Default:** `false`.
 
 This function is used to set the number of assertions and subtests that are expected to run
 within the test. If the number of assertions and subtests that run does not match the
@@ -3391,6 +3497,26 @@ test('planning with streams', (t, done) => {
 });
 ```
 
+When using the `wait` option, you can control how long the test will wait for the expected assertions.
+For example, setting a maximum wait time ensures that the test will wait for asynchronous assertions
+to complete within the specified timeframe:
+
+```js
+test('plan with wait: 2000 waits for async assertions', (t) => {
+  t.plan(1, { wait: 2000 }); // Waits for up to 2 seconds for the assertion to complete.
+
+  const asyncActivity = () => {
+    setTimeout(() => {
+      t.assert.ok(true, 'Async assertion completed within the wait time');
+    }, 1000); // Completes after 1 second, within the 2-second wait time.
+  };
+
+  asyncActivity(); // The test will pass because the assertion is completed in time.
+});
+```
+
+Note: If a `wait` timeout is specified, it begins counting down only after the test function finishes executing.
+
 ### `context.runOnly(shouldRunOnlyTests)`
 
 <!-- YAML
@@ -3410,10 +3536,8 @@ no-op.
 test('top level test', (t) => {
   // The test context can be set to run subtests with the 'only' option.
   t.runOnly(true);
-  return Promise.all([
-    t.test('this subtest is now skipped'),
-    t.test('this subtest is run', { only: true }),
-  ]);
+  t.test('this subtest is now skipped');
+  t.test('this subtest is run', { only: true });
 });
 ```
 
@@ -3486,6 +3610,10 @@ added:
   - v16.17.0
 changes:
   - version:
+    - REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/56664
+    description: This function no longer returns a `Promise`.
+  - version:
     - v18.8.0
     - v16.18.0
     pr-url: https://github.com/nodejs/node/pull/43554
@@ -3529,14 +3657,13 @@ changes:
   to this function is a [`TestContext`][] object. If the test uses callbacks,
   the callback function is passed as the second argument. **Default:** A no-op
   function.
-* Returns: {Promise} Fulfilled with `undefined` once the test completes.
 
 This function is used to create subtests under the current test. This function
 behaves in the same fashion as the top level [`test()`][] function.
 
 ```js
 test('top level test', async (t) => {
-  await t.test(
+  t.test(
     'This is a subtest',
     { only: false, skip: false, concurrency: 1, todo: false, plan: 1 },
     (t) => {
@@ -3545,6 +3672,29 @@ test('top level test', async (t) => {
   );
 });
 ```
+
+### `context.waitFor(condition[, options])`
+
+<!-- YAML
+added:
+  - v23.7.0
+  - v22.14.0
+-->
+
+* `condition` {Function|AsyncFunction} An assertion function that is invoked
+  periodically until it completes successfully or the defined polling timeout
+  elapses. Successful completion is defined as not throwing or rejecting. This
+  function does not accept any arguments, and is allowed to return any value.
+* `options` {Object} An optional configuration object for the polling operation.
+  The following properties are supported:
+  * `interval` {number} The number of milliseconds to wait after an unsuccessful
+    invocation of `condition` before trying again. **Default:** `50`.
+  * `timeout` {number} The poll timeout in milliseconds. If `condition` has not
+    succeeded by the time this elapses, an error occurs. **Default:** `1000`.
+* Returns: {Promise} Fulfilled with the value returned by `condition`.
+
+This method polls a `condition` function until that function either returns
+successfully or the operation times out.
 
 ## Class: `SuiteContext`
 

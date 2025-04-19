@@ -73,6 +73,7 @@ using v8::Integer;
 using v8::Isolate;
 using v8::JustVoid;
 using v8::Local;
+using v8::LocalVector;
 using v8::Maybe;
 using v8::MaybeLocal;
 using v8::Nothing;
@@ -81,6 +82,7 @@ using v8::Object;
 using v8::ObjectTemplate;
 using v8::Promise;
 using v8::String;
+using v8::TryCatch;
 using v8::Undefined;
 using v8::Value;
 
@@ -253,10 +255,20 @@ void FileHandle::New(const FunctionCallbackInfo<Value>& args) {
 
   std::optional<int64_t> maybeOffset = std::nullopt;
   std::optional<int64_t> maybeLength = std::nullopt;
-  if (args[1]->IsNumber())
-    maybeOffset = args[1]->IntegerValue(realm->context()).FromJust();
-  if (args[2]->IsNumber())
-    maybeLength = args[2]->IntegerValue(realm->context()).FromJust();
+  if (args[1]->IsNumber()) {
+    int64_t val;
+    if (!args[1]->IntegerValue(realm->context()).To(&val)) {
+      return;
+    }
+    maybeOffset = val;
+  }
+  if (args[2]->IsNumber()) {
+    int64_t val;
+    if (!args[2]->IntegerValue(realm->context()).To(&val)) {
+      return;
+    }
+    maybeLength = val;
+  }
 
   FileHandle::New(binding_data,
                   args[0].As<Int32>()->Value(),
@@ -834,11 +846,13 @@ void AfterMkdirp(uv_fs_t* req) {
     if (first_path.empty())
       return req_wrap->Resolve(Undefined(req_wrap->env()->isolate()));
     Local<Value> path;
-    Local<Value> error;
-    if (!StringBytes::Encode(req_wrap->env()->isolate(), first_path.c_str(),
-                             req_wrap->encoding(),
-                             &error).ToLocal(&path)) {
-      return req_wrap->Reject(error);
+    TryCatch try_catch(req_wrap->env()->isolate());
+    if (!StringBytes::Encode(req_wrap->env()->isolate(),
+                             first_path.c_str(),
+                             req_wrap->encoding())
+             .ToLocal(&path)) {
+      CHECK(try_catch.CanContinue());
+      return req_wrap->Reject(try_catch.Exception());
     }
     return req_wrap->Resolve(path);
   }
@@ -850,15 +864,14 @@ void AfterStringPath(uv_fs_t* req) {
   FS_ASYNC_TRACE_END1(
       req->fs_type, req_wrap, "result", static_cast<int>(req->result))
   MaybeLocal<Value> link;
-  Local<Value> error;
 
   if (after.Proceed()) {
-    link = StringBytes::Encode(req_wrap->env()->isolate(),
-                               req->path,
-                               req_wrap->encoding(),
-                               &error);
+    TryCatch try_catch(req_wrap->env()->isolate());
+    link = StringBytes::Encode(
+        req_wrap->env()->isolate(), req->path, req_wrap->encoding());
     if (link.IsEmpty()) {
-      req_wrap->Reject(error);
+      CHECK(try_catch.CanContinue());
+      req_wrap->Reject(try_catch.Exception());
     } else {
       Local<Value> val;
       if (link.ToLocal(&val)) req_wrap->Resolve(val);
@@ -872,15 +885,15 @@ void AfterStringPtr(uv_fs_t* req) {
   FS_ASYNC_TRACE_END1(
       req->fs_type, req_wrap, "result", static_cast<int>(req->result))
   MaybeLocal<Value> link;
-  Local<Value> error;
 
   if (after.Proceed()) {
+    TryCatch try_catch(req_wrap->env()->isolate());
     link = StringBytes::Encode(req_wrap->env()->isolate(),
                                static_cast<const char*>(req->ptr),
-                               req_wrap->encoding(),
-                               &error);
+                               req_wrap->encoding());
     if (link.IsEmpty()) {
-      req_wrap->Reject(error);
+      CHECK(try_catch.CanContinue());
+      req_wrap->Reject(try_catch.Exception());
     } else {
       Local<Value> val;
       if (link.ToLocal(&val)) req_wrap->Resolve(val);
@@ -899,11 +912,10 @@ void AfterScanDir(uv_fs_t* req) {
 
   Environment* env = req_wrap->env();
   Isolate* isolate = env->isolate();
-  Local<Value> error;
   int r;
 
-  std::vector<Local<Value>> name_v;
-  std::vector<Local<Value>> type_v;
+  LocalVector<Value> name_v(isolate);
+  LocalVector<Value> type_v(isolate);
 
   const bool with_file_types = req_wrap->with_file_types();
 
@@ -919,9 +931,11 @@ void AfterScanDir(uv_fs_t* req) {
     }
 
     Local<Value> filename;
-    if (!StringBytes::Encode(isolate, ent.name, req_wrap->encoding(), &error)
+    TryCatch try_catch(isolate);
+    if (!StringBytes::Encode(isolate, ent.name, req_wrap->encoding())
              .ToLocal(&filename)) {
-      return req_wrap->Reject(error);
+      CHECK(try_catch.CanContinue());
+      return req_wrap->Reject(try_catch.Exception());
     }
     name_v.push_back(filename);
 
@@ -1087,6 +1101,10 @@ constexpr bool is_uv_error_except_no_entry(int result) {
   return result < 0 && result != UV_ENOENT;
 }
 
+constexpr bool is_uv_error_except_no_entry_dir(int result) {
+  return result < 0 && !(result == UV_ENOENT || result == UV_ENOTDIR);
+}
+
 static void Stat(const FunctionCallbackInfo<Value>& args) {
   Realm* realm = Realm::GetCurrent(args);
   BindingData* binding_data = realm->GetBindingData<BindingData>();
@@ -1120,8 +1138,11 @@ static void Stat(const FunctionCallbackInfo<Value>& args) {
     FS_SYNC_TRACE_BEGIN(stat);
     int result;
     if (do_not_throw_if_no_entry) {
-      result = SyncCallAndThrowIf(
-          is_uv_error_except_no_entry, env, &req_wrap_sync, uv_fs_stat, *path);
+      result = SyncCallAndThrowIf(is_uv_error_except_no_entry_dir,
+                                  env,
+                                  &req_wrap_sync,
+                                  uv_fs_stat,
+                                  *path);
     } else {
       result = SyncCallAndThrowOnError(env, &req_wrap_sync, uv_fs_stat, *path);
     }
@@ -1404,17 +1425,10 @@ static void ReadLink(const FunctionCallbackInfo<Value>& args) {
     }
     const char* link_path = static_cast<const char*>(req_wrap_sync.req.ptr);
 
-    Local<Value> error;
-    MaybeLocal<Value> rc = StringBytes::Encode(isolate,
-                                               link_path,
-                                               encoding,
-                                               &error);
-    if (rc.IsEmpty()) {
-      env->isolate()->ThrowException(error);
-      return;
+    Local<Value> ret;
+    if (StringBytes::Encode(isolate, link_path, encoding).ToLocal(&ret)) {
+      args.GetReturnValue().Set(ret);
     }
-
-    args.GetReturnValue().Set(rc.ToLocalChecked());
   }
 }
 
@@ -1698,7 +1712,8 @@ static void RmSync(const FunctionCallbackInfo<Value>& args) {
     return env->ThrowErrnoException(EPERM, "rm", message.c_str(), path_c_str);
   } else if (error == std::errc::directory_not_empty) {
     std::string message = "Directory not empty: " + file_path_str;
-    return env->ThrowErrnoException(EACCES, "rm", message.c_str(), path_c_str);
+    return env->ThrowErrnoException(
+        ENOTEMPTY, "rm", message.c_str(), path_c_str);
   } else if (error == std::errc::not_a_directory) {
     std::string message = "Not a directory: " + file_path_str;
     return env->ThrowErrnoException(ENOTDIR, "rm", message.c_str(), path_c_str);
@@ -1914,16 +1929,12 @@ static void MKDir(const FunctionCallbackInfo<Value>& args) {
         return;
       }
       if (!req_wrap_sync.continuation_data()->first_path().empty()) {
-        Local<Value> error;
+        Local<Value> ret;
         std::string first_path(req_wrap_sync.continuation_data()->first_path());
-        MaybeLocal<Value> path = StringBytes::Encode(env->isolate(),
-                                                     first_path.c_str(),
-                                                     UTF8, &error);
-        if (path.IsEmpty()) {
-          env->isolate()->ThrowException(error);
-          return;
+        if (StringBytes::Encode(env->isolate(), first_path.c_str(), UTF8)
+                .ToLocal(&ret)) {
+          args.GetReturnValue().Set(ret);
         }
-        args.GetReturnValue().Set(path.ToLocalChecked());
       }
     } else {
       SyncCallAndThrowOnError(env, &req_wrap_sync, uv_fs_mkdir, *path, mode);
@@ -1963,17 +1974,10 @@ static void RealPath(const FunctionCallbackInfo<Value>& args) {
 
     const char* link_path = static_cast<const char*>(req_wrap_sync.req.ptr);
 
-    Local<Value> error;
-    MaybeLocal<Value> rc = StringBytes::Encode(isolate,
-                                               link_path,
-                                               encoding,
-                                               &error);
-    if (rc.IsEmpty()) {
-      env->isolate()->ThrowException(error);
-      return;
+    Local<Value> ret;
+    if (StringBytes::Encode(isolate, link_path, encoding).ToLocal(&ret)) {
+      args.GetReturnValue().Set(ret);
     }
-
-    args.GetReturnValue().Set(rc.ToLocalChecked());
   }
 }
 
@@ -2045,8 +2049,8 @@ static void ReadDir(const FunctionCallbackInfo<Value>& args) {
     }
 
     int r;
-    std::vector<Local<Value>> name_v;
-    std::vector<Local<Value>> type_v;
+    LocalVector<Value> name_v(isolate);
+    LocalVector<Value> type_v(isolate);
 
     for (;;) {
       uv_dirent_t ent;
@@ -2059,18 +2063,12 @@ static void ReadDir(const FunctionCallbackInfo<Value>& args) {
         return;
       }
 
-      Local<Value> error;
-      MaybeLocal<Value> filename = StringBytes::Encode(isolate,
-                                                       ent.name,
-                                                       encoding,
-                                                       &error);
-
-      if (filename.IsEmpty()) {
-        isolate->ThrowException(error);
+      Local<Value> fn;
+      if (!StringBytes::Encode(isolate, ent.name, encoding).ToLocal(&fn)) {
         return;
       }
 
-      name_v.push_back(filename.ToLocalChecked());
+      name_v.push_back(fn);
 
       if (with_types) {
         type_v.emplace_back(Integer::New(isolate, ent.type));
@@ -2223,8 +2221,19 @@ static void OpenFileHandle(const FunctionCallbackInfo<Value>& args) {
     CHECK_EQ(argc, 5);
     FSReqWrapSync req_wrap_sync;
     FS_SYNC_TRACE_BEGIN(open);
-    int result = SyncCall(env, args[4], &req_wrap_sync, "open",
-                          uv_fs_open, *path, flags, mode);
+    int result;
+    if (!SyncCall(env,
+                  args[4],
+                  &req_wrap_sync,
+                  "open",
+                  uv_fs_open,
+                  *path,
+                  flags,
+                  mode)
+             .To(&result)) {
+      // v8 error occurred while setting the context. propagate!
+      return;
+    }
     FS_SYNC_TRACE_END(open);
     if (result < 0) {
       return;  // syscall failed, no need to continue, error info is in ctx
@@ -2340,8 +2349,20 @@ static void WriteBuffer(const FunctionCallbackInfo<Value>& args) {
     CHECK_EQ(argc, 7);
     FSReqWrapSync req_wrap_sync;
     FS_SYNC_TRACE_BEGIN(write);
-    int bytesWritten = SyncCall(env, args[6], &req_wrap_sync, "write",
-                                uv_fs_write, fd, &uvbuf, 1, pos);
+    int bytesWritten;
+    if (!SyncCall(env,
+                  args[6],
+                  &req_wrap_sync,
+                  "write",
+                  uv_fs_write,
+                  fd,
+                  &uvbuf,
+                  1,
+                  pos)
+             .To(&bytesWritten)) {
+      FS_SYNC_TRACE_END(write, "bytesWritten", 0);
+      return;
+    }
     FS_SYNC_TRACE_END(write, "bytesWritten", bytesWritten);
     args.GetReturnValue().Set(bytesWritten);
   }
@@ -2484,7 +2505,6 @@ static void WriteString(const FunctionCallbackInfo<Value>& args) {
     }
   } else {  // write(fd, string, pos, enc, undefined, ctx)
     CHECK_EQ(argc, 6);
-    FSReqWrapSync req_wrap_sync;
     FSReqBase::FSReqBuffer stack_buffer;
     if (buf == nullptr) {
       if (!StringBytes::StorageSize(isolate, value, enc).To(&len))
@@ -2498,9 +2518,22 @@ static void WriteString(const FunctionCallbackInfo<Value>& args) {
       buf = *stack_buffer;
     }
     uv_buf_t uvbuf = uv_buf_init(buf, len);
+    FSReqWrapSync req_wrap_sync("write");
     FS_SYNC_TRACE_BEGIN(write);
-    int bytesWritten = SyncCall(env, args[5], &req_wrap_sync, "write",
-                                uv_fs_write, fd, &uvbuf, 1, pos);
+    int bytesWritten;
+    if (!SyncCall(env,
+                  args[5],
+                  &req_wrap_sync,
+                  "write",
+                  uv_fs_write,
+                  fd,
+                  &uvbuf,
+                  1,
+                  pos)
+             .To(&bytesWritten)) {
+      FS_SYNC_TRACE_END(write, "bytesWritten", 0);
+      return;
+    }
     FS_SYNC_TRACE_END(write, "bytesWritten", bytesWritten);
     args.GetReturnValue().Set(bytesWritten);
   }
@@ -2678,10 +2711,10 @@ static void ReadFileUtf8(const FunctionCallbackInfo<Value>& args) {
     FS_SYNC_TRACE_END(open);
     if (req.result < 0) {
       uv_fs_req_cleanup(&req);
-      // req will be cleaned up by scope leave.
       return env->ThrowUVException(
           static_cast<int>(req.result), "open", nullptr, path.out());
     }
+    uv_fs_req_cleanup(&req);
   }
 
   auto defer_close = OnScopeLeave([file, is_fd, &req]() {
@@ -3090,14 +3123,11 @@ static void Mkdtemp(const FunctionCallbackInfo<Value>& args) {
     if (is_uv_error(result)) {
       return;
     }
-    Local<Value> error;
-    MaybeLocal<Value> rc =
-        StringBytes::Encode(isolate, req_wrap_sync.req.path, encoding, &error);
-    if (rc.IsEmpty()) {
-      env->isolate()->ThrowException(error);
-      return;
+    Local<Value> ret;
+    if (StringBytes::Encode(isolate, req_wrap_sync.req.path, encoding)
+            .ToLocal(&ret)) {
+      args.GetReturnValue().Set(ret);
     }
-    args.GetReturnValue().Set(rc.ToLocalChecked());
   }
 }
 
@@ -3147,21 +3177,8 @@ static void GetFormatOfExtensionlessFile(
 }
 
 #ifdef _WIN32
-std::wstring ConvertToWideString(const std::string& str) {
-  int size_needed = MultiByteToWideChar(
-      CP_UTF8, 0, &str[0], static_cast<int>(str.size()), nullptr, 0);
-  std::wstring wstrTo(size_needed, 0);
-  MultiByteToWideChar(CP_UTF8,
-                      0,
-                      &str[0],
-                      static_cast<int>(str.size()),
-                      &wstrTo[0],
-                      size_needed);
-  return wstrTo;
-}
-
 #define BufferValueToPath(str)                                                 \
-  std::filesystem::path(ConvertToWideString(str.ToString()))
+  std::filesystem::path(ConvertToWideString(str.ToString(), CP_UTF8))
 
 std::string ConvertWideToUTF8(const std::wstring& wstr) {
   if (wstr.empty()) return std::string();
@@ -3409,9 +3426,11 @@ void BindingData::LegacyMainResolve(const FunctionCallbackInfo<Value>& args) {
     for (int i = 0; i < legacy_main_extensions_with_main_end; i++) {
       file_path = *initial_file_path + std::string(legacy_main_extensions[i]);
       // TODO(anonrig): Remove this when ToNamespacedPath supports std::string
-      Local<Value> local_file_path =
-          Buffer::Copy(env->isolate(), file_path.c_str(), file_path.size())
-              .ToLocalChecked();
+      Local<Value> local_file_path;
+      if (!Buffer::Copy(env->isolate(), file_path.c_str(), file_path.size())
+               .ToLocal(&local_file_path)) {
+        return;
+      }
       BufferValue buff_file_path(isolate, local_file_path);
       ToNamespacedPath(env, &buff_file_path);
 
@@ -3444,9 +3463,11 @@ void BindingData::LegacyMainResolve(const FunctionCallbackInfo<Value>& args) {
        i++) {
     file_path = *initial_file_path + std::string(legacy_main_extensions[i]);
     // TODO(anonrig): Remove this when ToNamespacedPath supports std::string
-    Local<Value> local_file_path =
-        Buffer::Copy(env->isolate(), file_path.c_str(), file_path.size())
-            .ToLocalChecked();
+    Local<Value> local_file_path;
+    if (!Buffer::Copy(env->isolate(), file_path.c_str(), file_path.size())
+             .ToLocal(&local_file_path)) {
+      return;
+    }
     BufferValue buff_file_path(isolate, local_file_path);
     ToNamespacedPath(env, &buff_file_path);
 

@@ -39,6 +39,9 @@ namespace node {
 
 using errors::TryCatchScope;
 using v8::Array;
+using v8::ArrayBuffer;
+using v8::BackingStore;
+using v8::BackingStoreInitializationMode;
 using v8::Boolean;
 using v8::Context;
 using v8::CppHeap;
@@ -51,10 +54,12 @@ using v8::HeapProfiler;
 using v8::HeapSpaceStatistics;
 using v8::Integer;
 using v8::Isolate;
+using v8::JustVoid;
 using v8::Local;
 using v8::Maybe;
 using v8::MaybeLocal;
 using v8::NewStringType;
+using v8::Nothing;
 using v8::Number;
 using v8::Object;
 using v8::ObjectTemplate;
@@ -176,11 +181,7 @@ bool AsyncHooks::pop_async_context(double async_id) {
     }
 #endif
     native_execution_async_resources_.resize(offset);
-    if (native_execution_async_resources_.size() <
-            native_execution_async_resources_.capacity() / 2 &&
-        native_execution_async_resources_.size() > 16) {
-      native_execution_async_resources_.shrink_to_fit();
-    }
+    native_execution_async_resources_.shrink_to_fit();
   }
 
   if (js_execution_async_resources()->Length() > offset) [[unlikely]] {
@@ -227,7 +228,12 @@ void AsyncHooks::InstallPromiseHooks(Local<Context> ctx) {
                            : PersistentToLocal::Strong(js_promise_hooks_[3]));
 }
 
+void Environment::PurgeTrackedEmptyContexts() {
+  std::erase_if(contexts_, [&](auto&& el) { return el.IsEmpty(); });
+}
+
 void Environment::TrackContext(Local<Context> context) {
+  PurgeTrackedEmptyContexts();
   size_t id = contexts_.size();
   contexts_.resize(id + 1);
   contexts_[id].Reset(isolate_, context);
@@ -236,7 +242,7 @@ void Environment::TrackContext(Local<Context> context) {
 
 void Environment::UntrackContext(Local<Context> context) {
   HandleScope handle_scope(isolate_);
-  std::erase_if(contexts_, [&](auto&& el) { return el.IsEmpty(); });
+  PurgeTrackedEmptyContexts();
   for (auto it = contexts_.begin(); it != contexts_.end(); it++) {
     if (Local<Context> saved_context = PersistentToLocal::Weak(isolate_, *it);
         saved_context == context) {
@@ -611,6 +617,7 @@ IsolateData::IsolateData(Isolate* isolate,
 
 IsolateData::~IsolateData() {
   if (cpp_heap_ != nullptr) {
+    v8::Locker locker(isolate_);
     // The CppHeap must be detached before being terminated.
     isolate_->DetachCppHeap();
     cpp_heap_->Terminate();
@@ -741,17 +748,18 @@ void Environment::add_refs(int64_t diff) {
 }
 
 uv_buf_t Environment::allocate_managed_buffer(const size_t suggested_size) {
-  NoArrayBufferZeroFillScope no_zero_fill_scope(isolate_data());
-  std::unique_ptr<v8::BackingStore> bs =
-      v8::ArrayBuffer::NewBackingStore(isolate(), suggested_size);
+  std::unique_ptr<BackingStore> bs = ArrayBuffer::NewBackingStore(
+      isolate(),
+      suggested_size,
+      BackingStoreInitializationMode::kUninitialized);
   uv_buf_t buf = uv_buf_init(static_cast<char*>(bs->Data()), bs->ByteLength());
   released_allocated_buffers_.emplace(buf.base, std::move(bs));
   return buf;
 }
 
-std::unique_ptr<v8::BackingStore> Environment::release_managed_buffer(
+std::unique_ptr<BackingStore> Environment::release_managed_buffer(
     const uv_buf_t& buf) {
-  std::unique_ptr<v8::BackingStore> bs;
+  std::unique_ptr<BackingStore> bs;
   if (buf.base != nullptr) {
     auto it = released_allocated_buffers_.find(buf.base);
     CHECK_NE(it, released_allocated_buffers_.end());
@@ -1584,54 +1592,66 @@ Local<Value> Environment::GetNow() {
   return Number::New(isolate(), static_cast<double>(now));
 }
 
-void CollectExceptionInfo(Environment* env,
-                          Local<Object> obj,
-                          int errorno,
-                          const char* err_string,
-                          const char* syscall,
-                          const char* message,
-                          const char* path,
-                          const char* dest) {
-  obj->Set(env->context(),
-           env->errno_string(),
-           Integer::New(env->isolate(), errorno)).Check();
-
-  obj->Set(env->context(), env->code_string(),
-           OneByteString(env->isolate(), err_string)).Check();
-
-  if (message != nullptr) {
-    obj->Set(env->context(), env->message_string(),
-             OneByteString(env->isolate(), message)).Check();
+Maybe<void> CollectExceptionInfo(Environment* env,
+                                 Local<Object> obj,
+                                 int errorno,
+                                 const char* err_string,
+                                 const char* syscall,
+                                 const char* message,
+                                 const char* path,
+                                 const char* dest) {
+  if (obj->Set(env->context(),
+               env->errno_string(),
+               Integer::New(env->isolate(), errorno))
+          .IsNothing() ||
+      obj->Set(env->context(),
+               env->code_string(),
+               OneByteString(env->isolate(), err_string))
+          .IsNothing() ||
+      (message != nullptr && obj->Set(env->context(),
+                                      env->message_string(),
+                                      OneByteString(env->isolate(), message))
+                                 .IsNothing())) {
+    return Nothing<void>();
   }
 
   Local<Value> path_buffer;
   if (path != nullptr) {
-    path_buffer =
-      Buffer::Copy(env->isolate(), path, strlen(path)).ToLocalChecked();
-    obj->Set(env->context(), env->path_string(), path_buffer).Check();
+    if (!Buffer::Copy(env->isolate(), path, strlen(path))
+             .ToLocal(&path_buffer) ||
+        obj->Set(env->context(), env->path_string(), path_buffer).IsNothing()) {
+      return Nothing<void>();
+    }
   }
 
   Local<Value> dest_buffer;
   if (dest != nullptr) {
-    dest_buffer =
-      Buffer::Copy(env->isolate(), dest, strlen(dest)).ToLocalChecked();
-    obj->Set(env->context(), env->dest_string(), dest_buffer).Check();
+    if (!Buffer::Copy(env->isolate(), dest, strlen(dest))
+             .ToLocal(&dest_buffer) ||
+        obj->Set(env->context(), env->dest_string(), dest_buffer).IsNothing()) {
+      return Nothing<void>();
+    }
   }
 
   if (syscall != nullptr) {
-    obj->Set(env->context(), env->syscall_string(),
-             OneByteString(env->isolate(), syscall)).Check();
+    if (obj->Set(env->context(),
+                 env->syscall_string(),
+                 OneByteString(env->isolate(), syscall))
+            .IsNothing()) {
+      return Nothing<void>();
+    }
   }
+
+  return JustVoid();
 }
 
-void Environment::CollectUVExceptionInfo(Local<Value> object,
-                                         int errorno,
-                                         const char* syscall,
-                                         const char* message,
-                                         const char* path,
-                                         const char* dest) {
-  if (!object->IsObject() || errorno == 0)
-    return;
+Maybe<void> Environment::CollectUVExceptionInfo(Local<Value> object,
+                                                int errorno,
+                                                const char* syscall,
+                                                const char* message,
+                                                const char* path,
+                                                const char* dest) {
+  if (!object->IsObject() || errorno == 0) return JustVoid();
 
   Local<Object> obj = object.As<Object>();
   const char* err_string = uv_err_name(errorno);
@@ -1640,7 +1660,7 @@ void Environment::CollectUVExceptionInfo(Local<Value> object,
     message = uv_strerror(errorno);
   }
 
-  CollectExceptionInfo(
+  return CollectExceptionInfo(
       this, obj, errorno, err_string, syscall, message, path, dest);
 }
 
@@ -1694,6 +1714,7 @@ AsyncHooks::AsyncHooks(Isolate* isolate, const SerializeInfo* info)
       fields_(isolate, kFieldsCount, MAYBE_FIELD_PTR(info, fields)),
       async_id_fields_(
           isolate, kUidFieldsCount, MAYBE_FIELD_PTR(info, async_id_fields)),
+      native_execution_async_resources_(isolate),
       info_(info) {
   HandleScope handle_scope(isolate);
   if (info == nullptr) {

@@ -67,7 +67,8 @@
 #endif
 
 #ifdef _WIN32
-# define SIGKILL 9
+#define SIGQUIT 3
+#define SIGKILL 9
 #endif
 
 #include "v8.h"  // NOLINT(build/include_order)
@@ -479,6 +480,7 @@ struct IsolateSettings {
   v8::Isolate::AbortOnUncaughtExceptionCallback
       should_abort_on_uncaught_exception_callback = nullptr;
   v8::FatalErrorCallback fatal_error_callback = nullptr;
+  v8::OOMErrorCallback oom_error_callback = nullptr;
   v8::PrepareStackTraceCallback prepare_stack_trace_callback = nullptr;
 
   // Miscellaneous callbacks
@@ -1122,16 +1124,37 @@ NODE_EXTERN enum encoding ParseEncoding(
 NODE_EXTERN void FatalException(v8::Isolate* isolate,
                                 const v8::TryCatch& try_catch);
 
-NODE_EXTERN v8::Local<v8::Value> Encode(v8::Isolate* isolate,
-                                        const char* buf,
-                                        size_t len,
-                                        enum encoding encoding = LATIN1);
+NODE_EXTERN v8::MaybeLocal<v8::Value> TryEncode(
+    v8::Isolate* isolate,
+    const char* buf,
+    size_t len,
+    enum encoding encoding = LATIN1);
 
 // Warning: This reverses endianness on Big Endian platforms, even though the
 // signature using uint16_t implies that it should not.
-NODE_EXTERN v8::Local<v8::Value> Encode(v8::Isolate* isolate,
-                                        const uint16_t* buf,
-                                        size_t len);
+NODE_EXTERN v8::MaybeLocal<v8::Value> TryEncode(v8::Isolate* isolate,
+                                                const uint16_t* buf,
+                                                size_t len);
+
+// The original Encode(...) functions are deprecated because they do not
+// appropriately propagate exceptions and instead rely on ToLocalChecked()
+// which crashes the process if an exception occurs. We cannot just remove
+// these as it would break ABI compatibility, so we keep them around but
+// deprecate them in favor of the TryEncode(...) variations which return
+// a MaybeLocal<> and do not crash the process if an exception occurs.
+NODE_DEPRECATED(
+    "Use TryEncode(...) instead",
+    NODE_EXTERN v8::Local<v8::Value> Encode(v8::Isolate* isolate,
+                                            const char* buf,
+                                            size_t len,
+                                            enum encoding encoding = LATIN1));
+
+// Warning: This reverses endianness on Big Endian platforms, even though the
+// signature using uint16_t implies that it should not.
+NODE_DEPRECATED("Use TryEncode(...) instead",
+                NODE_EXTERN v8::Local<v8::Value> Encode(v8::Isolate* isolate,
+                                                        const uint16_t* buf,
+                                                        size_t len));
 
 // Returns -1 if the handle was not valid for decoding
 NODE_EXTERN ssize_t DecodeBytes(v8::Isolate* isolate,
@@ -1380,6 +1403,12 @@ NODE_EXTERN void RequestInterrupt(Environment* env,
  * zero then no execution has been set. This will happen if the user handles
  * I/O from native code. */
 NODE_EXTERN async_id AsyncHooksGetExecutionAsyncId(v8::Isolate* isolate);
+
+/* Returns the id of the current execution context. If the return value is
+ * zero then no execution has been set. This will happen if the user handles
+ * I/O from native code. */
+NODE_EXTERN async_id
+AsyncHooksGetExecutionAsyncId(v8::Local<v8::Context> context);
 
 /* Return same value as async_hooks.triggerAsyncId(); */
 NODE_EXTERN async_id AsyncHooksGetTriggerAsyncId(v8::Isolate* isolate);

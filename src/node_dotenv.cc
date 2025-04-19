@@ -6,10 +6,15 @@
 
 namespace node {
 
+using v8::EscapableHandleScope;
+using v8::JustVoid;
 using v8::Local;
-using v8::NewStringType;
+using v8::Maybe;
+using v8::MaybeLocal;
+using v8::Nothing;
 using v8::Object;
 using v8::String;
+using v8::Value;
 
 std::vector<Dotenv::env_file_data> Dotenv::GetDataFromArgs(
     const std::vector<std::string>& args) {
@@ -59,61 +64,60 @@ std::vector<Dotenv::env_file_data> Dotenv::GetDataFromArgs(
   return env_files;
 }
 
-void Dotenv::SetEnvironment(node::Environment* env) {
-  auto isolate = env->isolate();
+Maybe<void> Dotenv::SetEnvironment(node::Environment* env) {
+  Local<Value> name;
+  Local<Value> val;
+  auto context = env->context();
 
   for (const auto& entry : store_) {
-    auto key = entry.first;
-    auto value = entry.second;
-
-    auto existing = env->env_vars()->Get(key.data());
-
+    auto existing = env->env_vars()->Get(entry.first.data());
     if (!existing.has_value()) {
-      env->env_vars()->Set(
-          isolate,
-          v8::String::NewFromUtf8(
-              isolate, key.data(), NewStringType::kNormal, key.size())
-              .ToLocalChecked(),
-          v8::String::NewFromUtf8(
-              isolate, value.data(), NewStringType::kNormal, value.size())
-              .ToLocalChecked());
+      if (!ToV8Value(context, entry.first).ToLocal(&name) ||
+          !ToV8Value(context, entry.second).ToLocal(&val)) {
+        return Nothing<void>();
+      }
+      env->env_vars()->Set(env->isolate(), name.As<String>(), val.As<String>());
     }
   }
+
+  return JustVoid();
 }
 
-Local<Object> Dotenv::ToObject(Environment* env) const {
+MaybeLocal<Object> Dotenv::ToObject(Environment* env) const {
+  EscapableHandleScope scope(env->isolate());
   Local<Object> result = Object::New(env->isolate());
 
-  for (const auto& entry : store_) {
-    auto key = entry.first;
-    auto value = entry.second;
+  Local<Value> name;
+  Local<Value> val;
+  auto context = env->context();
 
-    result
-        ->Set(
-            env->context(),
-            v8::String::NewFromUtf8(
-                env->isolate(), key.data(), NewStringType::kNormal, key.size())
-                .ToLocalChecked(),
-            v8::String::NewFromUtf8(env->isolate(),
-                                    value.data(),
-                                    NewStringType::kNormal,
-                                    value.size())
-                .ToLocalChecked())
-        .Check();
+  for (const auto& entry : store_) {
+    if (!ToV8Value(context, entry.first).ToLocal(&name) ||
+        !ToV8Value(context, entry.second).ToLocal(&val) ||
+        result->Set(context, name, val).IsNothing()) {
+      return MaybeLocal<Object>();
+    }
   }
 
-  return result;
+  return scope.Escape(result);
 }
 
+// Removes space characters (spaces, tabs and newlines) from
+// the start and end of a given input string
 std::string_view trim_spaces(std::string_view input) {
   if (input.empty()) return "";
-  if (input.front() == ' ') {
-    input.remove_prefix(input.find_first_not_of(' '));
+
+  auto pos_start = input.find_first_not_of(" \t\n");
+  if (pos_start == std::string_view::npos) {
+    return "";
   }
-  if (!input.empty() && input.back() == ' ') {
-    input = input.substr(0, input.find_last_not_of(' ') + 1);
+
+  auto pos_end = input.find_last_not_of(" \t\n");
+  if (pos_end == std::string_view::npos) {
+    return input.substr(pos_start);
   }
-  return input;
+
+  return input.substr(pos_start, pos_end - pos_start + 1);
 }
 
 void Dotenv::ParseContent(const std::string_view input) {
@@ -141,12 +145,28 @@ void Dotenv::ParseContent(const std::string_view input) {
     // If there is no equal character, then ignore everything
     auto equal = content.find('=');
     if (equal == std::string_view::npos) {
-      break;
+      auto newline = content.find('\n');
+      if (newline != std::string_view::npos) {
+        // If we used `newline` only,
+        // the '\n' might remain and cause an empty-line parse
+        content.remove_prefix(newline + 1);
+      } else {
+        content = {};
+      }
+      // No valid data here, skip to next line
+      continue;
     }
 
     key = content.substr(0, equal);
     content.remove_prefix(equal + 1);
     key = trim_spaces(key);
+
+    // If the value is not present (e.g. KEY=) set is to an empty string
+    if (content.empty() || content.front() == '\n') {
+      store_.insert_or_assign(std::string(key), "");
+      continue;
+    }
+
     content = trim_spaces(content);
 
     if (key.empty()) {
@@ -184,7 +204,9 @@ void Dotenv::ParseContent(const std::string_view input) {
         store_.insert_or_assign(std::string(key), multi_line_value);
         auto newline = content.find('\n', closing_quote + 1);
         if (newline != std::string_view::npos) {
-          content.remove_prefix(newline);
+          content.remove_prefix(newline + 1);
+        } else {
+          content = {};
         }
         continue;
       }
@@ -205,7 +227,7 @@ void Dotenv::ParseContent(const std::string_view input) {
         if (newline != std::string_view::npos) {
           value = content.substr(0, newline);
           store_.insert_or_assign(std::string(key), value);
-          content.remove_prefix(newline);
+          content.remove_prefix(newline + 1);
         }
       } else {
         // Example: KEY="value"
@@ -215,8 +237,13 @@ void Dotenv::ParseContent(const std::string_view input) {
         // since there could be newline characters inside the value.
         auto newline = content.find('\n', closing_quote + 1);
         if (newline != std::string_view::npos) {
-          content.remove_prefix(newline);
+          // Use +1 to discard the '\n' itself => next line
+          content.remove_prefix(newline + 1);
+        } else {
+          content = {};
         }
+        // No valid data here, skip to next line
+        continue;
       }
     } else {
       // Regular key value pair.
@@ -232,15 +259,21 @@ void Dotenv::ParseContent(const std::string_view input) {
         if (hash_character != std::string_view::npos) {
           value = content.substr(0, hash_character);
         }
-        content.remove_prefix(newline);
+        store_.insert_or_assign(std::string(key), trim_spaces(value));
+        content.remove_prefix(newline + 1);
       } else {
         // In case the last line is a single key/value pair
         // Example: KEY=VALUE (without a newline at the EOF)
-        value = content.substr(0);
+        value = content;
+        auto hash_char = value.find('#');
+        if (hash_char != std::string_view::npos) {
+          value = content.substr(0, hash_char);
+        }
+        store_.insert_or_assign(std::string(key), trim_spaces(value));
+        content = {};
       }
 
-      value = trim_spaces(value);
-      store_.insert_or_assign(std::string(key), value);
+      store_.insert_or_assign(std::string(key), trim_spaces(value));
     }
   }
 }

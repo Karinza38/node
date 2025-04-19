@@ -2,12 +2,16 @@
 'use strict';
 
 const common = require('../common');
-common.skipIfWorker();
-const assert = require('assert');
 const {
   Worker,
   isMainThread,
 } = require('worker_threads');
+
+if (!isMainThread) {
+  common.skip('This test only works on a main thread');
+}
+
+const assert = require('assert');
 
 // Guarantee the initial state
 {
@@ -18,6 +22,7 @@ if (isMainThread) {
   assert.throws(() => {
     new Worker(__filename);
   }, common.expectsError({
+    message: 'Access to this API has been restricted. Use --allow-worker to manage permissions.',
     code: 'ERR_ACCESS_DENIED',
     permission: 'WorkerThreads',
   }));

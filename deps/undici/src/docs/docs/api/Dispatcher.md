@@ -194,7 +194,7 @@ Returns: `Boolean` - `false` if dispatcher is busy and further dispatch calls wo
 * **method** `string`
 * **reset** `boolean` (optional) - Default: `false` - If `false`, the request will attempt to create a long-living connection by sending the `connection: keep-alive` header,otherwise will attempt to close it immediately after response by sending `connection: close` within the request and closing the socket afterwards.
 * **body** `string | Buffer | Uint8Array | stream.Readable | Iterable | AsyncIterable | null` (optional) - Default: `null`
-* **headers** `UndiciHeaders | string[]` (optional) - Default: `null`.
+* **headers** `UndiciHeaders` (optional) - Default: `null`.
 * **query** `Record<string, any> | null` (optional) - Default: `null` - Query string params to be embedded in the request URL. Note that both keys and values of query are encoded using `encodeURIComponent`. If for some reason you need to send them unencoded, embed query params into path directly instead.
 * **idempotent** `boolean` (optional) - Default: `true` if `method` is `'HEAD'` or `'GET'` - Whether the requests can be safely retried or not. If `false` the request won't be sent until all preceding requests in the pipeline has completed.
 * **blocking** `boolean` (optional) - Default: `method !== 'HEAD'` - Whether the response is expected to take a long time and would end up blocking the pipeline. When this is set to `true` further pipelining will be avoided on the same connection until headers have been received.
@@ -210,7 +210,7 @@ Returns: `Boolean` - `false` if dispatcher is busy and further dispatch calls wo
 * **onResponseStart** `(controller: DispatchController, statusCode: number, headers: Record<string, string | string []>, statusMessage?: string) => void` - Invoked when statusCode and headers have been received. May be invoked multiple times due to 1xx informational headers. Not required for `upgrade` requests.
 * **onResponseData** `(controller: DispatchController, chunk: Buffer) => void` - Invoked when response payload data is received. Not required for `upgrade` requests.
 * **onResponseEnd** `(controller: DispatchController, trailers: Record<string, string | string[]>) => void` - Invoked when response payload and trailers have been received and the request has completed. Not required for `upgrade` requests.
-* **onResponseError** `(error: Error) => void` - Invoked when an error has occurred. May not throw.
+* **onResponseError** `(controller: DispatchController, error: Error) => void` - Invoked when an error has occurred. May not throw.
 
 #### Example 1 - Dispatch GET request
 
@@ -652,7 +652,7 @@ return null
 
 A faster version of `Dispatcher.request`. This method expects the second argument `factory` to return a [`stream.Writable`](https://nodejs.org/api/stream.html#stream_class_stream_writable) stream which the response will be written to. This improves performance by avoiding creating an intermediate [`stream.Readable`](https://nodejs.org/api/stream.html#stream_readable_streams) stream when the user expects to directly pipe the response body to a [`stream.Writable`](https://nodejs.org/api/stream.html#stream_class_stream_writable) stream.
 
-As demonstrated in [Example 1 - Basic GET stream request](/docs/docs/api/Dispatcher.md#example-1---basic-get-stream-request), it is recommended to use the `option.opaque` property to avoid creating a closure for the `factory` method. This pattern works well with Node.js Web Frameworks such as [Fastify](https://fastify.io). See [Example 2 - Stream to Fastify Response](/docs/docs/api/Dispatch.md#example-2---stream-to-fastify-response) for more details.
+As demonstrated in [Example 1 - Basic GET stream request](/docs/docs/api/Dispatcher.md#example-1-basic-get-stream-request), it is recommended to use the `option.opaque` property to avoid creating a closure for the `factory` method. This pattern works well with Node.js Web Frameworks such as [Fastify](https://fastify.io). See [Example 2 - Stream to Fastify Response](/docs/docs/api/Dispatch.md#example-2-stream-to-fastify-response) for more details.
 
 Arguments:
 

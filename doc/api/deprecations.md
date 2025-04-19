@@ -940,13 +940,16 @@ changes:
 
 Type: End-of-Life
 
-The [`tls.CryptoStream`][] class was removed. Please use
+The `tls.CryptoStream` class was removed. Please use
 [`tls.TLSSocket`][] instead.
 
 ### DEP0043: `tls.SecurePair`
 
 <!-- YAML
 changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/57361
+    description: End-of-Life.
   - version: v8.0.0
     pr-url: https://github.com/nodejs/node/pull/11349
     description: Runtime deprecation.
@@ -966,9 +969,9 @@ changes:
     description: Runtime deprecation.
 -->
 
-Type: Documentation-only
+Type: End-of-Life
 
-The [`tls.SecurePair`][] class is deprecated. Please use
+The `tls.SecurePair` class is deprecated. Please use
 [`tls.TLSSocket`][] instead.
 
 ### DEP0044: `util.isArray()`
@@ -1488,6 +1491,9 @@ officially supported API.
 
 <!-- YAML
 changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/57361
+    description: End-of-Life.
   - version: v8.0.0
     pr-url: https://github.com/nodejs/node/pull/11349
     description: Runtime deprecation.
@@ -1507,7 +1513,7 @@ changes:
     description: Runtime deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
 The `tls.createSecurePair()` API was deprecated in documentation in Node.js
 0.11.3. Users should use `tls.Socket` instead.
@@ -1539,6 +1545,9 @@ removed. Please use `sloppy` instead.
 
 <!-- YAML
 changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/57551
+    description: End-of-Life.
   - version: v12.0.0
     pr-url: https://github.com/nodejs/node/pull/24167
     description: Runtime deprecation.
@@ -1547,7 +1556,7 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
 The `node:http` module `OutgoingMessage.prototype._headers` and
 `OutgoingMessage.prototype._headerNames` properties are deprecated. Use one of
@@ -1826,12 +1835,15 @@ and replaced with an identical, public `path.toNamespacedPath()` method.
 
 <!-- YAML
 changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/57567
+    description: End-of-Life.
   - version: v9.0.0
     pr-url: https://github.com/nodejs/node/pull/15990
     description: Runtime deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
 `fs.truncate()` `fs.truncateSync()` usage with a file descriptor is
 deprecated. Please use `fs.ftruncate()` or `fs.ftruncateSync()` to work with
@@ -1866,7 +1878,7 @@ changes:
     description: Runtime deprecation.
 -->
 
-Type: End-of-Life.
+Type: End-of-Life
 
 The `ecdhCurve` option to `tls.createSecureContext()` and `tls.TLSSocket` could
 be set to `false` to disable ECDH entirely on the server only. This mode was
@@ -2065,28 +2077,34 @@ method.
 
 <!-- YAML
 changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/56966
+    description: End-of-Life.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/18066
     description: Runtime deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
-`timers.enroll()` is deprecated. Please use the publicly documented
+`timers.enroll()` has been removed. Please use the publicly documented
 [`setTimeout()`][] or [`setInterval()`][] instead.
 
 ### DEP0096: `timers.unenroll()`
 
 <!-- YAML
 changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/56966
+    description: End-of-Life.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/18066
     description: Runtime deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
-`timers.unenroll()` is deprecated. Please use the publicly documented
+`timers.unenroll()` has been removed. Please use the publicly documented
 [`clearTimeout()`][] or [`clearInterval()`][] instead.
 
 ### DEP0097: `MakeCallback` with `domain` property
@@ -2218,7 +2236,8 @@ This deprecation has been superseded by the deprecation of the
 changes:
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/18990
-    description: Documentation-only deprecation.
+    description: Documentation-only deprecation
+                 with `--pending-deprecation` support.
 -->
 
 Type: Documentation-only (supports [`--pending-deprecation`][])
@@ -2270,7 +2289,7 @@ initialization vectors.
 It is recommended to derive a key using
 [`crypto.pbkdf2()`][] or [`crypto.scrypt()`][] with random salts and to use
 [`crypto.createCipheriv()`][] and [`crypto.createDecipheriv()`][] to obtain the
-[`Cipher`][] and [`Decipher`][] objects respectively.
+[`Cipheriv`][] and [`Decipheriv`][] objects respectively.
 
 ### DEP0107: `tls.convertNPNProtocols()`
 
@@ -2427,7 +2446,7 @@ changes:
     pr-url:
       - https://github.com/nodejs/node/pull/22519
       - https://github.com/nodejs/node/pull/23017
-    description: Added documentation-only deprecation
+    description: Documentation-only deprecation
                  with `--pending-deprecation` support.
 -->
 
@@ -2508,7 +2527,8 @@ It will become an error in future versions of Node.js.
 changes:
   - version: v11.0.0
     pr-url: https://github.com/nodejs/node/pull/23597
-    description: Documentation-only deprecation.
+    description: Documentation-only deprecation
+                 with `--pending-deprecation` support.
 -->
 
 Type: Documentation-only (supports [`--pending-deprecation`][])
@@ -2540,12 +2560,15 @@ undocumented `COUNTER_NET_SERVER_CONNECTION()`,
 
 <!-- YAML
 changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/57550
+    description: End-of-Life.
   - version: v12.0.0
     pr-url: https://github.com/nodejs/node/pull/23760
     description: Runtime deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
 The undocumented `net._setSimultaneousAccepts()` function was originally
 intended for debugging and performance tuning when using the
@@ -2557,12 +2580,15 @@ generally useful and is being removed. See discussion here:
 
 <!-- YAML
 changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/57339
+    description: End-of-Life.
   - version: v12.0.0
     pr-url: https://github.com/nodejs/node/pull/23820
     description: Runtime deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
 Please use `Server.prototype.setSecureContext()` instead.
 
@@ -2613,14 +2639,17 @@ The `node:_stream_wrap` module is deprecated.
 
 <!-- YAML
 changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/56966
+    description: End-of-Life.
   - version: v11.14.0
     pr-url: https://github.com/nodejs/node/pull/26760
     description: Runtime deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
-The previously undocumented `timers.active()` is deprecated.
+The previously undocumented `timers.active()` has been removed.
 Please use the publicly documented [`timeout.refresh()`][] instead.
 If re-referencing the timeout is necessary, [`timeout.ref()`][] can be used
 with no performance impact since Node.js 10.
@@ -2629,14 +2658,17 @@ with no performance impact since Node.js 10.
 
 <!-- YAML
 changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/56966
+    description: End-of-Life.
   - version: v11.14.0
     pr-url: https://github.com/nodejs/node/pull/26760
     description: Runtime deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
-The previously undocumented and "private" `timers._unrefActive()` is deprecated.
+The previously undocumented and "private" `timers._unrefActive()` has been removed.
 Please use the publicly documented [`timeout.refresh()`][] instead.
 If unreferencing the timeout is necessary, [`timeout.unref()`][] can be used
 with no performance impact since Node.js 10.
@@ -2753,7 +2785,8 @@ Prefer [`response.socket`][] over [`response.connection`][] and
 changes:
   - version: v12.12.0
     pr-url: https://github.com/nodejs/node/pull/29781
-    description: Documentation-only deprecation.
+    description: Documentation-only deprecation
+                 with `--pending-deprecation` support.
 -->
 
 Type: Documentation-only (supports [`--pending-deprecation`][])
@@ -2888,7 +2921,8 @@ Use [`request.destroy()`][] instead of [`request.abort()`][].
 changes:
   - version: v14.3.0
     pr-url: https://github.com/nodejs/node/pull/33294
-    description: Documentation-only (supports [`--pending-deprecation`][]).
+    description: Documentation-only deprecation
+                 with `--pending-deprecation` support.
 -->
 
 Type: Documentation-only (supports [`--pending-deprecation`][])
@@ -2902,10 +2936,11 @@ instead of `.inputStream` and `.output` instead of `.outputStream`.
 changes:
   - version: v14.3.0
     pr-url: https://github.com/nodejs/node/pull/33294
-    description: Documentation-only (supports [`--pending-deprecation`][]).
+    description: Documentation-only deprecation
+                 with `--pending-deprecation` support.
 -->
 
-Type: Documentation-only
+Type: Documentation-only (supports [`--pending-deprecation`][])
 
 The `node:repl` module exports a `_builtinLibs` property that contains an array
 of built-in modules. It was incomplete so far and instead it's better to rely
@@ -2921,6 +2956,7 @@ changes:
 -->
 
 Type: Runtime
+
 `Transform._transformState` will be removed in future versions where it is
 no longer required due to simplification of the implementation.
 
@@ -3028,11 +3064,11 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
 Using a trailing `"/"` to define subpath folder mappings in the
-[subpath exports][] or [subpath imports][] fields is deprecated. Use
-[subpath patterns][] instead.
+[subpath exports][] or [subpath imports][] fields is no longer supported.
+Use [subpath patterns][] instead.
 
 ### DEP0149: `http.IncomingMessage#connection`
 
@@ -3043,7 +3079,7 @@ changes:
     description: Documentation-only deprecation.
  -->
 
-Type: Documentation-only.
+Type: Documentation-only
 
 Prefer [`message.socket`][] over [`message.connection`][].
 
@@ -3267,7 +3303,7 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Runtime.
+Type: Runtime
 
 This event was deprecated because it did not work with V8 promise combinators
 which diminished its usefulness.
@@ -3556,7 +3592,7 @@ changes:
 
 Type: Runtime
 
-Calling [`util.promisify`][] on a function that returns a <Promise> will ignore
+Calling [`util.promisify`][] on a function that returns a `Promise` will ignore
 the result of said promise, which can lead to unhandled promise rejections.
 
 ### DEP0175: `util.toUSVString`
@@ -3578,6 +3614,9 @@ The [`util.toUSVString()`][] API is deprecated. Please use
 <!-- YAML
 changes:
   - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/55862
+    description: End-of-Life.
+  - version: REPLACEME
     pr-url: https://github.com/nodejs/node/pull/49686
     description: Runtime deprecation.
   - version: v20.8.0
@@ -3585,10 +3624,10 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
-`F_OK`, `R_OK`, `W_OK` and `X_OK` getters exposed directly on `node:fs` are
-deprecated. Get them from `fs.constants` or `fs.promises.constants` instead.
+`F_OK`, `R_OK`, `W_OK` and `X_OK` getters exposed directly on `node:fs` were
+removed. Get them from `fs.constants` or `fs.promises.constants` instead.
 
 ### DEP0177: `util.types.isWebAssemblyCompiledModule`
 
@@ -3779,12 +3818,17 @@ It is recommended to use the `new` qualifier instead. This applies to all REPL c
 
 <!-- YAML
 changes:
-  - version: v23.4.0
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/55753
+    description: Runtime deprecation.
+  - version:
+    - v23.4.0
+    - v22.13.0
     pr-url: https://github.com/nodejs/node/pull/55892
     description: Documentation-only.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
 Passing non-supported argument types is deprecated and, instead of returning `false`,
 will throw an error in a future version.
@@ -3793,7 +3837,9 @@ will throw an error in a future version.
 
 <!-- YAML
 changes:
-  - version: v23.4.0
+  - version:
+    - v23.4.0
+    - v22.13.0
     pr-url: https://github.com/nodejs/node/pull/55545
     description: Documentation-only deprecation.
 -->
@@ -3806,7 +3852,9 @@ These properties are unconditionally `true`. Any checks based on these propertie
 
 <!-- YAML
 changes:
-  - version: v23.4.0
+  - version:
+    - v23.4.0
+    - v22.13.0
     pr-url: https://github.com/nodejs/node/pull/55545
     description: Documentation-only deprecation.
 -->
@@ -3816,6 +3864,42 @@ Type: Documentation-only
 `process.features.tls_alpn`, `process.features.tls_ocsp`, and `process.features.tls_sni` are
 deprecated, as their values are guaranteed to be identical to that of `process.features.tls`.
 
+### DEP0190: Passing `args` to `node:child_process` `execFile`/`spawn` with `shell` option `true`
+
+<!-- YAML
+changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/57199
+    description: Runtime deprecation.
+  - version:
+    - v23.11.0
+    pr-url: https://github.com/nodejs/node/pull/57389
+    description: Documentation-only deprecation.
+-->
+
+Type: Runtime
+
+When an `args` array is passed to [`child_process.execFile`][] or [`child_process.spawn`][] with the option
+`{ shell: true }`, the values are not escaped, only space-separated, which can lead to shell injection.
+
+### DEP0191: `repl.builtinModules`
+
+<!-- YAML
+changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/57508
+    description: Documentation-only deprecation
+                 with `--pending-deprecation` support.
+-->
+
+Type: Documentation-only (supports [`--pending-deprecation`][])
+
+The `node:repl` module exports a `builtinModules` property that contains an array
+of built-in modules. This was incomplete and matched the already deprecated
+`repl._builtinLibs` ([DEP0142][]) instead it's better to rely
+upon `require('node:module').builtinModules`.
+
+[DEP0142]: #dep0142-repl_builtinlibs
 [NIST SP 800-38D]: https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
 [RFC 6066]: https://tools.ietf.org/html/rfc6066#section-3
 [RFC 8247 Section 2.4]: https://www.rfc-editor.org/rfc/rfc8247#section-2.4
@@ -3830,8 +3914,8 @@ deprecated, as their values are guaranteed to be identical to that of `process.f
 [`Buffer.from(array)`]: buffer.md#static-method-bufferfromarray
 [`Buffer.from(buffer)`]: buffer.md#static-method-bufferfrombuffer
 [`Buffer.isBuffer()`]: buffer.md#static-method-bufferisbufferobj
-[`Cipher`]: crypto.md#class-cipher
-[`Decipher`]: crypto.md#class-decipher
+[`Cipheriv`]: crypto.md#class-cipheriv
+[`Decipheriv`]: crypto.md#class-decipheriv
 [`REPLServer.clearBufferedCommand()`]: repl.md#replserverclearbufferedcommand
 [`ReadStream.open()`]: fs.md#class-fsreadstream
 [`Server.getConnections()`]: net.md#servergetconnectionscallback
@@ -3843,6 +3927,8 @@ deprecated, as their values are guaranteed to be identical to that of `process.f
 [`assert`]: assert.md
 [`asyncResource.runInAsyncScope()`]: async_context.md#asyncresourceruninasyncscopefn-thisarg-args
 [`buffer.subarray`]: buffer.md#bufsubarraystart-end
+[`child_process.execFile`]: child_process.md#child_processexecfilefile-args-options-callback
+[`child_process.spawn`]: child_process.md#child_processspawncommand-args-options
 [`child_process`]: child_process.md
 [`clearInterval()`]: timers.md#clearintervaltimeout
 [`clearTimeout()`]: timers.md#cleartimeouttimeout
@@ -3929,9 +4015,7 @@ deprecated, as their values are guaranteed to be identical to that of `process.f
 [`timeout.ref()`]: timers.md#timeoutref
 [`timeout.refresh()`]: timers.md#timeoutrefresh
 [`timeout.unref()`]: timers.md#timeoutunref
-[`tls.CryptoStream`]: tls.md#class-tlscryptostream
 [`tls.SecureContext`]: tls.md#tlscreatesecurecontextoptions
-[`tls.SecurePair`]: tls.md#class-tlssecurepair
 [`tls.TLSSocket`]: tls.md#class-tlstlssocket
 [`tls.checkServerIdentity()`]: tls.md#tlscheckserveridentityhostname-cert
 [`tls.createSecureContext()`]: tls.md#tlscreatesecurecontextoptions

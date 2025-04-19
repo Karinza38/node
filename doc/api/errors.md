@@ -4,22 +4,27 @@
 
 <!--type=misc-->
 
-Applications running in Node.js will generally experience four categories of
-errors:
+Applications running in Node.js will generally experience the following
+categories of errors:
 
 * Standard JavaScript errors such as {EvalError}, {SyntaxError}, {RangeError},
   {ReferenceError}, {TypeError}, and {URIError}.
+* Standard `DOMException`s.
 * System errors triggered by underlying operating system constraints such
   as attempting to open a file that does not exist or attempting to send data
   over a closed socket.
-* User-specified errors triggered by application code.
 * `AssertionError`s are a special class of error that can be triggered when
   Node.js detects an exceptional logic violation that should never occur. These
   are raised typically by the `node:assert` module.
+* User-specified errors triggered by application code.
 
 All JavaScript and system errors raised by Node.js inherit from, or are
 instances of, the standard JavaScript {Error} class and are guaranteed
 to provide _at least_ the properties available on that class.
+
+The [`error.message`][] property of errors raised by Node.js may be changed in
+any versions. Use [`error.code`][] to identify an error instead. For a
+`DOMException`, use [`domException.name`][] to identify its type.
 
 ## Error propagation and interception
 
@@ -2095,11 +2100,15 @@ does not consist of exactly two elements.
 added:
  - v23.0.0
  - v22.10.0
+changes:
+    - version:
+      - v23.7.0
+      - v22.14.0
+      pr-url: https://github.com/nodejs/node/pull/56610
+      description: This error is no longer thrown on valid yet unsupported syntax.
 -->
 
-The provided TypeScript syntax is not valid or unsupported.
-This could happen when using TypeScript syntax that requires
-transformation with [type-stripping][].
+The provided TypeScript syntax is not valid.
 
 <a id="ERR_INVALID_URI"></a>
 
@@ -2115,6 +2124,13 @@ An invalid URL was passed to the [WHATWG][WHATWG URL API] [`URL`
 constructor][`new URL(input)`] or the legacy [`url.parse()`][] to be parsed.
 The thrown error object typically has an additional property `'input'` that
 contains the URL that failed to parse.
+
+<a id="ERR_INVALID_URL_PATTERN"></a>
+
+### `ERR_INVALID_URL_PATTERN`
+
+An invalid URLPattern was passed to the [WHATWG][WHATWG URL API] \[`URLPattern`
+constructor]\[`new URLPattern(input)`] to be parsed.
 
 <a id="ERR_INVALID_URL_SCHEME"></a>
 
@@ -2179,7 +2195,9 @@ signaling a short circuit.
 ### `ERR_LOAD_SQLITE_EXTENSION`
 
 <!-- YAML
-added: v23.5.0
+added:
+  - v23.5.0
+  - v22.13.0
 -->
 
 An error occurred while loading a SQLite extension.
@@ -2372,6 +2390,16 @@ added: v15.0.0
 An operation failed. This is typically used to signal the general failure
 of an asynchronous operation.
 
+<a id="ERR_OPTIONS_BEFORE_BOOTSTRAPPING"></a>
+
+### `ERR_OPTIONS_BEFORE_BOOTSTRAPPING`
+
+<!-- YAML
+added: v23.10.0
+-->
+
+An attempt was made to get options before the bootstrapping was completed.
+
 <a id="ERR_OUT_OF_RANGE"></a>
 
 ### `ERR_OUT_OF_RANGE`
@@ -2459,7 +2487,9 @@ object.
 ### `ERR_QUIC_APPLICATION_ERROR`
 
 <!-- YAML
-added: v23.4.0
+added:
+  - v23.4.0
+  - v22.13.0
 -->
 
 > Stability: 1 - Experimental
@@ -2513,7 +2543,9 @@ Opening a QUIC stream failed.
 ### `ERR_QUIC_TRANSPORT_ERROR`
 
 <!-- YAML
-added: v23.4.0
+added:
+  - v23.4.0
+  - v22.13.0
 -->
 
 > Stability: 1 - Experimental
@@ -2525,7 +2557,9 @@ A QUIC transport error occurred.
 ### `ERR_QUIC_VERSION_NEGOTIATION_ERROR`
 
 <!-- YAML
-added: v23.4.0
+added:
+  - v23.4.0
+  - v22.13.0
 -->
 
 > Stability: 1 - Experimental
@@ -2569,6 +2603,7 @@ changes:
   - version:
     - v23.0.0
     - v22.12.0
+    - v20.19.0
     pr-url: https://github.com/nodejs/node/pull/55085
     description: require() now supports loading synchronous ES modules by default.
 -->
@@ -2707,6 +2742,17 @@ The source map could not be parsed because it does not exist, or is corrupt.
 
 A file imported from a source map was not found.
 
+<a id="ERR_SOURCE_PHASE_NOT_DEFINED"></a>
+
+### `ERR_SOURCE_PHASE_NOT_DEFINED`
+
+<!-- YAML
+added: REPLACEME
+-->
+
+The provided module import does not provide a source phase imports representation for source phase
+import syntax `import source x from 'x'` or `import.source(x)`.
+
 <a id="ERR_SQLITE_ERROR"></a>
 
 ### `ERR_SQLITE_ERROR`
@@ -2820,25 +2866,6 @@ reports.
 An unspecified or non-specific system error has occurred within the Node.js
 process. The error object will have an `err.info` object property with
 additional details.
-
-<a id="ERR_TAP_LEXER_ERROR"></a>
-
-### `ERR_TAP_LEXER_ERROR`
-
-An error representing a failing lexer state.
-
-<a id="ERR_TAP_PARSER_ERROR"></a>
-
-### `ERR_TAP_PARSER_ERROR`
-
-An error representing a failing parser state. Additional information about
-the token causing the error is available via the `cause` property.
-
-<a id="ERR_TAP_VALIDATION_ERROR"></a>
-
-### `ERR_TAP_VALIDATION_ERROR`
-
-This error represents a failed TAP validation.
 
 <a id="ERR_TEST_FAILURE"></a>
 
@@ -3127,6 +3154,20 @@ try {
 }
 ```
 
+<a id="ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX"></a>
+
+### `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`
+
+<!-- YAML
+added:
+  - v23.7.0
+  - v22.14.0
+-->
+
+The provided TypeScript syntax is unsupported.
+This could happen when using TypeScript syntax that requires
+transformation with [type-stripping][].
+
 <a id="ERR_USE_AFTER_CLOSE"></a>
 
 ### `ERR_USE_AFTER_CLOSE`
@@ -3323,6 +3364,12 @@ The requested functionality is not supported in worker threads.
 ### `ERR_ZLIB_INITIALIZATION_FAILED`
 
 Creation of a [`zlib`][] object failed due to incorrect configuration.
+
+<a id="ERR_ZSTD_INVALID_PARAM"></a>
+
+### `ERR_ZSTD_INVALID_PARAM`
+
+An invalid parameter key was passed during construction of a Zstd stream.
 
 <a id="HPE_CHUNK_EXTENSIONS_OVERFLOW"></a>
 
@@ -3875,6 +3922,25 @@ removed: v10.0.0
 Used when an attempt is made to use a readable stream that has not implemented
 [`readable._read()`][].
 
+<a id="ERR_TAP_LEXER_ERROR"></a>
+
+### `ERR_TAP_LEXER_ERROR`
+
+An error representing a failing lexer state.
+
+<a id="ERR_TAP_PARSER_ERROR"></a>
+
+### `ERR_TAP_PARSER_ERROR`
+
+An error representing a failing parser state. Additional information about
+the token causing the error is available via the `cause` property.
+
+<a id="ERR_TAP_VALIDATION_ERROR"></a>
+
+### `ERR_TAP_VALIDATION_ERROR`
+
+This error represents a failed TAP validation.
+
 <a id="ERR_TLS_RENEGOTIATION_FAILED"></a>
 
 ### `ERR_TLS_RENEGOTIATION_FAILED`
@@ -4242,7 +4308,10 @@ An error occurred trying to allocate memory. This should never happen.
 [`dgram.createSocket()`]: dgram.md#dgramcreatesocketoptions-callback
 [`dgram.disconnect()`]: dgram.md#socketdisconnect
 [`dgram.remoteAddress()`]: dgram.md#socketremoteaddress
+[`domException.name`]: https://developer.mozilla.org/en-US/docs/Web/API/DOMException/name
 [`errno`(3) man page]: https://man7.org/linux/man-pages/man3/errno.3.html
+[`error.code`]: #errorcode
+[`error.message`]: #errormessage
 [`fs.Dir`]: fs.md#class-fsdir
 [`fs.cp()`]: fs.md#fscpsrc-dest-options-callback
 [`fs.readFileSync`]: fs.md#fsreadfilesyncpath-options
